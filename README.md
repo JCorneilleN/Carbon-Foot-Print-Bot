@@ -52,8 +52,8 @@ Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **
 
 ---
 # Resources
+[View Presentation](https://docs.google.com/presentation/d/1-5rTSPqwiaoWCs2kIfVloWJKbg0t5Akwyx47hN7TwLU/edit?usp=sharing)
 
-Demo presentation slides
 
 ## 📝 Quick Start
 ```bash
@@ -76,6 +76,7 @@ ngrok http 8000
 
 # 6) Configure Twilio WhatsApp webhook
 # POST https://<ngrok-url>/twilio/sms
+
 
 
 
