@@ -65,6 +65,7 @@ Twilio + OpenAI integration notes
 
 # Languages Used:
 
-Python 50%
+Python 100%
+
 
 
