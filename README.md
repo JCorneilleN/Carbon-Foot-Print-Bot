@@ -1,4 +1,4 @@
-# Carbon Footprint from Receipts (WhatsApp + FastAPI + Climatiq)
+# Carbon Footprint from Receipts (Twilio + OpenAI + FastAPI + Climatiq)
 
 Turn any grocery list or receipt photo you WhatsApp to your Twilio number into a total CO₂e footprint, an itemized breakdown, and smart, quantified swap suggestions (e.g., “Swap beef → lentils: save ~4.2 kg CO₂e”).
 
@@ -59,17 +59,7 @@ Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **
 - Voice input/output for chatbot  
 
 ---
-# Acknowledgements
 
-Climatiq for high‑quality emission factors
-
-Twilio for WhatsApp APIs
-
-FastAPI
-
-OpenAI
-
-Tesseract OCR
 # Resources
 [View Presentation](https://docs.google.com/presentation/d/1-5rTSPqwiaoWCs2kIfVloWJKbg0t5Akwyx47hN7TwLU/edit?usp=sharing)
 
@@ -95,6 +85,43 @@ ngrok http 8000
 
 # 6) Configure Twilio WhatsApp webhook
 # POST https://<ngrok-url>/twilio/sms
+```
+# Getting Started
+1) Create & activate venv
+python -m venv .venv
+..venv\Scripts\Activate.ps1
+
+2) Install deps
+pip install -r requirements.txt
+
+3) Create .env (see template below) at project root
+(Same folder where you run uvicorn from)
+4) Run the API
+$env:PORT=8000
+python -m uvicorn app.main:app --host 0.0.0.0 --port $env:PORT --reload
+
+5) Expose with ngrok (in another terminal)
+ngrok http 8000
+Copy the https URL shown, e.g. https://abcd1234.ngrok-free.app/
+6) Twilio webhook (POST)
+WhatsApp Sandbox or Messaging Service → Inbound Settings → Request URL:
+https://abcd1234.ngrok-free.app/twilio/sms
+Method: POST
+7) Health check
+Open in browser: https://abcd1234.ngrok-free.app/health  → {"ok": true}
+
+## Acknowledgements
+
+- Climatiq for high‑quality emission factors
+
+- Twilio for WhatsApp APIs
+
+- FastAPI
+
+- Tesseract OCR
+- OpenAI
+
+
 
 
 
