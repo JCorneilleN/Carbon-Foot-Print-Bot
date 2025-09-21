@@ -29,15 +29,6 @@ Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **
 
 ---
 
-## 📈 Time and Space Complexity
-**Time Complexity:** depends on AI response + network latency.  
-**Space Complexity:** stores user shopping list and AI-generated suggestions.  
-- `O(N + M)` where:  
-  - `N` = length of input prompt/list  
-  - `M` = length of AI-generated output  
-
----
-
 ## 👥 Authors
 - Dorcas Osangiri  
 - Corneille Ngoy  
@@ -76,6 +67,7 @@ ngrok http 8000
 
 # 6) Configure Twilio WhatsApp webhook
 # POST https://<ngrok-url>/twilio/sms
+
 
 
 
