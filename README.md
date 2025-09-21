@@ -18,6 +18,23 @@ Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **
 - Debug endpoints for local testing  
 
 ---
+# Requirements
+
+OS: Windows, macOS, or Linux
+
+Python: 3.11+ (3.12/3.13 fine)
+
+pip/venv
+
+ngrok: v3.7.0+ (free plan OK)
+
+Tesseract OCR (optional, for image receipts; OpenAI Vision fallback available)
+
+Twilio: Account + WhatsApp sandbox or an approved WhatsApp number
+
+Climatiq: Free API key (developer plan)
+
+OpenAI: API key (optional: OCR fallback + encouragement line)
 
 ## 🛠 Technologies Used
 - **FastAPI + Uvicorn** → backend & API  
@@ -42,6 +59,17 @@ Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **
 - Voice input/output for chatbot  
 
 ---
+# Acknowledgements
+
+Climatiq for high‑quality emission factors
+
+Twilio for WhatsApp APIs
+
+FastAPI
+
+OpenAI
+
+Tesseract OCR
 # Resources
 [View Presentation](https://docs.google.com/presentation/d/1-5rTSPqwiaoWCs2kIfVloWJKbg0t5Akwyx47hN7TwLU/edit?usp=sharing)
 
@@ -67,6 +95,7 @@ ngrok http 8000
 
 # 6) Configure Twilio WhatsApp webhook
 # POST https://<ngrok-url>/twilio/sms
+
 
 
 
