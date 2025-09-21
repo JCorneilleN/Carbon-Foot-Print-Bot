@@ -18,8 +18,6 @@ OpenAI API → natural language processing to analyze shopping lists.
 
 Python → backend with Flask to handle requests and responses.
 
-(Optional) Colab / Jupyter Notebook → simulate chatbot without a phone number for testing/demo.
-
 
 # 📈 Time and Space Complexity
 
@@ -69,4 +67,4 @@ Twilio + OpenAI integration notes
 
 Python 50%
 
-HTML/CSS/JS (optional frontend demo) 50%
+
