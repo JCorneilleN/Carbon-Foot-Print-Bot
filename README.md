@@ -1,71 +1,86 @@
-## Carbon Chatbot: Track Your Shopping Carbon Footprint
+# Carbon Footprint from Receipts (WhatsApp + FastAPI + Climatiq)
 
-Carbon Chatbot is a simple, user-friendly platform that helps users understand the carbon impact of their shopping choices and suggests greener alternatives.
+Turn any grocery list or receipt photo you WhatsApp to your Twilio number into a total CO₂e footprint, an itemized breakdown, and smart, quantified swap suggestions (e.g., “Swap beef → lentils: save ~4.2 kg CO₂e”).
 
-# 🚀 How It Works
+Built with **FastAPI**, **Twilio WhatsApp**, **Climatiq** (emission factors), **OpenAI** (Vision OCR + suggestions).
 
-Users send a shopping list → via WhatsApp (Twilio).
+---
 
-AI analyzes with OpenAI → calculates estimated carbon emissions and recommends low-carbon alternatives.
- 
-Response is delivered in seconds → making sustainable choices simple and actionable.
+## 🚀 Features
+- **Two input modes:**  
+  - Typed list: `2 lb ground beef, 1 gallon milk, 6 eggs`  
+  - Receipt photo: OCR extracts line items
+- Accurate CO₂e calculation via **Climatiq**  
+- Smart unit conversions: lb↔kg, oz↔g, volume↔mass for liquids  
+- Itemized breakdown + total CO₂e  
+- Quantified suggestions: top contributors with alternative swaps & CO₂e saved  
+- WhatsApp replies via TwiML  
+- Debug endpoints for local testing  
 
-# 🛠 Technologies Used
+---
 
-Twilio → messaging platform for WhatsApp/SMS.
+## 🛠 Technologies Used
+- **FastAPI + Uvicorn** → backend & API  
+- **Twilio** → WhatsApp messaging & media  
+- **Climatiq API** → emission factor search & estimate  
+- **OpenAI** → OCR fallback & encouragement line (optional)  
+- **Tesseract OCR** → local receipt scanning (optional)  
+- **ngrok** → local tunnel for webhook testing  
 
-OpenAI API → natural language processing to analyze shopping lists.
+---
 
-Python → backend with Flask to handle requests and responses.
+## 📈 Time and Space Complexity
+**Time Complexity:** depends on AI response + network latency.  
+**Space Complexity:** stores user shopping list and AI-generated suggestions.  
+- `O(N + M)` where:  
+  - `N` = length of input prompt/list  
+  - `M` = length of AI-generated output  
 
+---
 
-# 📈 Time and Space Complexity
+## 👥 Authors
+- Dorcas Osangiri  
+- Corneille Ngoy  
 
-Time Complexity
+---
 
-Mainly depends on the AI response time and network latency.
+## ✨ Future Improvements
+- Web dashboard → history & footprint trends  
+- Expand swap suggestions → more foods & lifestyle items  
+- SMS/MMS + multilingual support  
+- Voice input/output for chatbot  
 
-Space Complexity
-
-Stores user shopping list and AI-generated suggestions.
-
-Technical Estimate: O(N + M)
-
-N = length of the input shopping list
-
-M = length of AI-generated output
-
-# 👥 Authors
-
-Sybil Osangiri
-
-Corneille Ngoy
-
-# ✨ Future Improvements
-
-Personalized carbon tracker for individual users.
-
-Real-time local data integration (bus schedules, energy mix, etc.).
-
-Multilingual support for global reach.
-
-Interactive chatbot interface with voice input/output.
-
-# About
-
-AI-powered chatbot to help individuals make sustainable shopping decisions and understand carbon impact.
-
+---
 # Resources
 
 Demo presentation slides
 
-Python scripts for chatbot simulation
+## 📝 Quick Start
+```bash
+# 1) Create & activate venv
+python -m venv .venv
+source .venv/bin/activate  # Linux/macOS
+# OR
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell
 
-Twilio + OpenAI integration notes
+# 2) Install dependencies
+pip install -r requirements.txt
 
-# Languages Used:
+# 3) Set up .env with keys (Twilio, Climatiq, OpenAI optional)
 
-Python 100%
+# 4) Run API
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 5) Expose with ngrok
+ngrok http 8000
+
+# 6) Configure Twilio WhatsApp webhook
+# POST https://<ngrok-url>/twilio/sms
+
+
+
+
+
 
 
 
