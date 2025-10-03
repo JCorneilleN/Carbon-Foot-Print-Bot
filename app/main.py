@@ -2,17 +2,22 @@
 from dotenv import load_dotenv
 load_dotenv()  # load .env before anything else
 
-import html, os, traceback
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import Response
+import os, html, traceback
+from fastapi import FastAPI, Form, Request, Query
+from fastapi.responses import PlainTextResponse, JSONResponse
 
-from fastapi import Query
-from fastapi.responses import JSONResponse
-from .integrations.climatiq import estimate_for_qty
-from .parsers import parse_text
+# === AI + Climatiq hybrid ===
+from .ai_router import normalize_items_llm, fallback_estimate_llm
+from .integrations.climatiq import estimate_for_qty, search_factor
+
+# === Parsers ===
+from .parsers import parse_mms_or_text, parse_text
+
+# === Suggestions (kept) ===
+from .suggestions import tips_from_breakdown
 
 
-# fail fast if required env is missing
+# ---- Require env (OpenAI + Climatiq) ---------------------------------------
 def require_env(keys: list[str]) -> None:
     missing = [k for k in keys if not os.getenv(k)]
     if missing:
@@ -21,18 +26,13 @@ def require_env(keys: list[str]) -> None:
             ". Create a .env file in your project root with those keys."
         )
 
-require_env(["CLIMATIQ_API_KEY"])
+# OpenAI is required (Vision + suggestions). Climatiq required (factors).
+require_env(["OPENAI_API_KEY", "CLIMATIQ_API_KEY"])
 
-from .parsers import parse_mms_or_text
-from .mapper import map_to_products
-from .calculator import compute_co2
-from .suggestions import tips_from_breakdown
-from .integrations.climatiq import estimate_for_qty
 
+# ---- FastAPI app ------------------------------------------------------------
 app = FastAPI()
 
-from fastapi.responses import PlainTextResponse
-import html
 
 def twiml_message(text: str, media_url: str | None = None) -> PlainTextResponse:
     """Return TwiML <Message> with proper text/xml content type."""
@@ -51,18 +51,8 @@ def twiml_message(text: str, media_url: str | None = None) -> PlainTextResponse:
 def health():
     return {"ok": True}
 
-@app.get("/debug/estimate")
-def debug_est(name: str = "ground beef", qty: float = 2, unit: str = "lb"):
-    try:
-        res = estimate_for_qty(name, qty, unit)
-        if not res:
-            return {"ok": False, "why": "no_factor_or_incompatible_units"}
-        kg, meta = res
-        return {"ok": True, "kg": kg, "factor_unit": meta["factor"].get("unit"), "activity": meta["factor"].get("activity_id")}
-    except Exception as e:
-        traceback.print_exc()
-        return {"ok": False, "error": str(e)}
 
+# ---- WhatsApp webhook -------------------------------------------------------
 @app.post("/twilio/sms")
 async def twilio_sms(
     request: Request,
@@ -73,42 +63,107 @@ async def twilio_sms(
 ):
     try:
         print(f"INBOUND: From={From} | Body={Body!r} | NumMedia={NumMedia} | MediaUrl0={MediaUrl0}")
+
+        # 1) Parse (text or image)
         items = parse_mms_or_text(MediaUrl0, Body)
         print(f"PARSED ITEMS: {items}")
         if not items:
-            return twiml_message("Send items like: '2 lb ground beef, 1 gallon milk, 6 eggs' — or attach a receipt photo.")
+            return twiml_message(
+                "Send items like: '2 lb ground beef, 1 gallon milk, 6 eggs' — or attach a receipt photo."
+            )
 
-        mapped = map_to_products(items)
-        total, breakdown = compute_co2(mapped)
+        # 2) Normalize with OpenAI (adds canonical names + alternative queries)
+        try:
+            norm_items = normalize_items_llm(items)
+        except Exception as e:
+            print("[ai] normalize failed:", e)
+            norm_items = items
+
+        # 3) Hybrid estimate
+        total = 0.0
+        breakdown = []
+        used_ai_fallback = False
+
+        for it in norm_items:
+            name = (it.get("canonical") or it.get("name") or "").strip()
+            qty  = float(it.get("qty") or 0)
+            unit = (it.get("unit") or "each").strip().lower()
+            if qty <= 0 or not name:
+                continue
+
+            # Try Climatiq with canonical name
+            est = estimate_for_qty(name, qty, unit)
+
+            # If not found, try any LLM-suggested queries
+            if not est:
+                for q in it.get("climatiq_queries", []):
+                    if q and q != name:
+                        est = estimate_for_qty(q, qty, unit)
+                        if est:
+                            break
+
+            # Last resort: have OpenAI estimate
+            if not est:
+                fb = fallback_estimate_llm(it)
+                if fb:
+                    kg, note = fb
+                    total += kg
+                    breakdown.append({
+                        "name": name,
+                        "kg_co2": round(kg, 3),
+                        "source": "ai_fallback",
+                        "note": note
+                    })
+                    used_ai_fallback = True
+                    continue
+
+            if est:
+                kg, _details = est
+                total += kg
+                breakdown.append({
+                    "name": name,
+                    "kg_co2": round(kg, 3),
+                    "source": "climatiq"
+                })
+
+        # 4) Tips (receipt-aware, can be “you’re good”)
         tips = tips_from_breakdown(breakdown, total)
 
-        lines = [f"Total: {total} kg CO2e"]
+        # 5) Format reply
+        lines = [f"Total: {round(total, 3)} kg CO2e"]
         lines += [f"• {b['name']}: {b['kg_co2']} kg" for b in breakdown]
         if tips:
             lines.append("Tips:\n" + tips)
+        if used_ai_fallback:
+            lines.append("\n(*) Some items estimated by AI when no exact factor was available.")
 
         return twiml_message("\n".join(lines))
+
     except Exception:
         traceback.print_exc()
         return twiml_message("Sorry—something went wrong. Try a shorter list or a clearer photo.")
 
-from .integrations.climatiq import search_factor
 
+# ---- Debug endpoints --------------------------------------------------------
 @app.get("/debug/search")
 def debug_search(query: str = "beef"):
     try:
         doc = search_factor(query, unit_family="mass")
         if not doc:
             return {"ok": False, "why": "no_results"}
-        return {"ok": True, "activity_id": doc.get("activity_id"), "unit_type": doc.get("unit_type"), "unit": doc.get("unit")}
+        return {
+            "ok": True,
+            "activity_id": doc.get("activity_id"),
+            "unit_type": doc.get("unit_type"),
+            "unit": doc.get("unit")
+        }
     except Exception as e:
-        import traceback; traceback.print_exc()
+        traceback.print_exc()
         return {"ok": False, "error": str(e)}
-    
+
 
 @app.get("/debug/parse")
 def debug_parse(body: str = Query("")):
-    """Quickly see how the text parser splits items."""
     try:
         items = parse_text(body or "")
         return JSONResponse(items)
@@ -117,14 +172,18 @@ def debug_parse(body: str = Query("")):
 
 
 @app.get("/debug/estimate")
-def debug_est(name: str, qty: float, unit: str):
+def debug_est(name: str = "ground beef", qty: float = 2, unit: str = "lb"):
     """Call Climatiq for a single item to check units/factor quickly."""
     try:
         res = estimate_for_qty(name, qty, unit)
         if not res:
             return JSONResponse({"ok": False, "why": "no_factor_or_incompatible_units"})
         kg, details = res
-        return JSONResponse({"ok": True, "kg_co2e": kg, "factor": details.get("factor", {})})
+        return JSONResponse({
+            "ok": True,
+            "kg_co2e": kg,
+            "factor": details.get("factor", {})
+        })
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
